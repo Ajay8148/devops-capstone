@@ -9,7 +9,7 @@ let todos = [];
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ message: ' Todo API v2 Live  Running' });
+  res.json({ message: ' Todo API v3 Live  Running' });
 });
 
 // Get todos
