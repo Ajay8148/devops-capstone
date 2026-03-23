@@ -1,0 +1,25 @@
+- name: Database Setup and Backup
+  hosts: web
+  become: true
+
+  tasks:
+
+    - name: Install PostgreSQL client
+      apt:
+        name: postgresql-client
+        state: present
+
+    - name: Create backup script
+      copy:
+        dest: /usr/local/bin/db-backup.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          pg_dump -h <RDS-ENDPOINT> -U postgres -d mydb > /tmp/db_backup.sql
+
+    - name: Schedule backup (cron)
+      cron:
+        name: "DB Backup"
+        minute: "0"
+        hour: "2"
+        job: "/usr/local/bin/db-backup.sh"

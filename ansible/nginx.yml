@@ -1,0 +1,30 @@
+- name: Setup Nginx Reverse Proxy
+  hosts: web
+  become: true
+
+  tasks:
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Configure reverse proxy
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+              listen 80;
+
+              location / {
+                  proxy_pass http://localhost:3000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+              }
+          }
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted

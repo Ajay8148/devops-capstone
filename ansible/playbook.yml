@@ -1,0 +1,81 @@
+- name: Setup Server
+  hosts: web
+  become: true
+
+  vars:
+    account_id: "474872686388"
+    region: "us-east-1"
+    image_name: "todo-app"
+    image_tag: "latest"
+
+  tasks:
+
+    - name: Update packages
+      apt:
+        update_cache: yes
+
+    # ---------------- AWS CLI INSTALL ----------------
+    - name: Install dependencies
+      apt:
+        name: unzip
+        state: present
+
+    - name: Download AWS CLI
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /tmp/awscliv2.zip
+
+    - name: Unzip AWS CLI
+      unarchive:
+        src: /tmp/awscliv2.zip
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install AWS CLI
+      command: /tmp/aws/install
+      args:
+        creates: /usr/local/bin/aws
+
+    # ---------------- DOCKER SETUP ----------------
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # ---------------- GIT ----------------
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    # ---------------- ECR LOGIN ----------------
+    - name: Login to AWS ECR
+      shell: |
+        aws ecr get-login-password --region {{ region }} | docker login --username AWS --password-stdin {{ account_id }}.dkr.ecr.{{ region }}.amazonaws.com
+
+    # ---------------- PULL IMAGE ----------------
+    - name: Pull Docker Image
+      shell: |
+        docker pull {{ account_id }}.dkr.ecr.{{ region }}.amazonaws.com/{{ image_name }}:{{ image_tag }}
+
+    # ---------------- RUN CONTAINER ----------------
+    - name: Run Container
+      community.docker.docker_container:
+        name: todo-app
+        image: "{{ account_id }}.dkr.ecr.{{ region }}.amazonaws.com/{{ image_name }}:{{ image_tag }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "3000:3000"

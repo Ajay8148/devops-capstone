@@ -1,0 +1,42 @@
+- name: Setup CloudWatch Logs
+  hosts: web
+  become: true
+
+  tasks:
+
+    - name: Install CloudWatch Agent
+      apt:
+        deb: https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+
+    - name: Create config directory
+      file:
+        path: /opt/aws/amazon-cloudwatch-agent/etc
+        state: directory
+        mode: '0755'
+
+    - name: Create CloudWatch config
+      copy:
+        dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+        content: |
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/syslog",
+                      "log_group_name": "syslog",
+                      "log_stream_name": "{instance_id}"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+
+    - name: Start CloudWatch Agent
+      shell: |
+        /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+        -a fetch-config -m ec2 \
+        -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+        -s
